@@ -28,11 +28,12 @@ def create_query_engine(
     index: VectorStoreIndex,
     similarity_top_k: int = 4,
     response_mode: str = "compact",
+    temperature: float = 0.2,
 ) -> BaseQueryEngine:
     """
     Creates and returns a QueryEngine backed by Gemini LLM.
     """
-    llm = get_llm()
+    llm = get_llm(temperature=temperature)
     Settings.llm = llm
 
     return index.as_query_engine(
