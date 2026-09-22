@@ -8,7 +8,7 @@ from src.Ingestion.vectordb import build_or_load_index, get_qdrant_client
 
 
 def main():
-    print("Initializing PageTrail RAG System...")
+    print("Initializing NyayaDocs RAG System...")
 
     # 1. Check if Qdrant vector store already has indexed documents
     client = get_qdrant_client()
@@ -19,7 +19,7 @@ def main():
             count = client.count(collection_name=COLLECTION_NAME).count
             has_vectors = count > 0
             if has_vectors:
-                print(f"⚡Found existing collection '{COLLECTION_NAME}' with {count} vectors.")
+                print(f"Found existing collection '{COLLECTION_NAME}' with {count} vectors.")
     except Exception as e:
         print(f"Notice: Could not inspect collection: {e}")
         has_vectors = False
