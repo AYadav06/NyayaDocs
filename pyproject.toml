@@ -1,0 +1,14 @@
+[project]
+name = "pagetrail"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "docling>=2.129.0",
+    "llama-index>=0.14.25",
+    "llama-index-embeddings-gemini>=0.4.2",
+    "llama-index-llms-gemini>=0.6.2",
+    "python-dotenv>=1.2.3",
+    "requests>=2.34.2",
+]
