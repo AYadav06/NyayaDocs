@@ -1,5 +1,3 @@
-
-
 from typing import List, Optional
 from llama_index.core import Document
 from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
@@ -33,7 +31,7 @@ class LlamaIndexChunker:
             chunk_overlap=chunk_overlap,
         )
 
-              # markdown parser 
+              # markdown parser
         self.md_parser = MarkdownNodeParser() if use_markdown_parser else None
 
     def chunk_documents(self, documents: List[Document]) -> List[BaseNode]:

@@ -48,4 +48,14 @@ class Parser:
 
         return documents
 
+    def parse_and_save_markdown(self, pdf_path: Path, output_dir: Path = Path("data/parsed_markdown")) -> Document:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        doc = self.parse_file(pdf_path)
+        # Save to disk as a .md file
+        md_file = output_dir / f"{pdf_path.stem}.md"
+        with open(md_file, "w", encoding="utf-8") as f:
+            f.write(doc.text)
+        print(f"Saved parsed markdown to: {md_file}")
+        return doc
+
 
