@@ -28,8 +28,8 @@ rag_state = {
 }
 
 
-def initialize_rag(max_initial_docs: Optional[int] = 2, force_rebuild: bool = False):
-    """Initializes or loads the VectorStoreIndex."""
+def initialize_rag(force_rebuild: bool = False):
+    """Initializes or loads the VectorStoreIndex if an index already exists."""
     client = get_qdrant_client()
     rag_state["client"] = client
 
@@ -48,25 +48,12 @@ def initialize_rag(max_initial_docs: Optional[int] = 2, force_rebuild: bool = Fa
     if has_vectors:
         print("⚡ Loading VectorStoreIndex from existing Qdrant storage...")
         index = build_or_load_index(client=client, force_rebuild=force_rebuild)
+        rag_state["index"] = index
+        return index
     else:
-        print("📚 No existing index found. Starting PDF ingestion with Docling...")
-        pdf_dir = Path("data/20_pdf")
-        if not pdf_dir.exists():
-            print(f"⚠️ PDF directory '{pdf_dir}' not found.")
-            return None
-
-        parser = Parser()
-        documents = parser.parse_directory(pdf_dir, max_docs=max_initial_docs)
-        if not documents:
-            print("⚠️ No documents parsed.")
-            return None
-
-        chunker = LlamaIndexChunker(chunk_size=1024, chunk_overlap=128)
-        nodes = chunker.chunk_documents(documents)
-        index = build_or_load_index(client=client, nodes=nodes, force_rebuild=force_rebuild)
-
-    rag_state["index"] = index
-    return index
+        print("ℹ️ No existing vector index found. Ready for ingestion via /ingest endpoint.")
+        rag_state["index"] = None
+        return None
 
 
 @asynccontextmanager
@@ -74,7 +61,7 @@ async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events."""
     print("🚀 Starting NyayaDocs API...")
     try:
-        initialize_rag(max_initial_docs=2)
+        initialize_rag()
     except Exception as e:
         print(f"⚠️ Notice during startup RAG initialization: {e}")
         print("💡 The API is running. You can trigger ingestion via /ingest endpoint.")
