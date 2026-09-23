@@ -16,7 +16,6 @@ from src.config import (
     QDRANT_STORAGE_PATH,
 )
 from src.Ingestion.chunker import LlamaIndexChunker
-from src.Ingestion.docling_parser import Parser
 from src.Ingestion.vectordb import build_or_load_index, get_qdrant_client
 from src.Query.query_engine import create_query_engine
 from src.Retrieval.retriever import retrieve_relevant_nodes
@@ -271,6 +270,16 @@ def ingest_documents(request: IngestRequest):
         raise HTTPException(status_code=404, detail=f"PDF directory '{pdf_dir}' not found.")
 
     try:
+        try:
+            from src.Ingestion.docling_parser import Parser
+        except ImportError:
+            raise HTTPException(
+                status_code=501,
+                detail=(
+                    "Docling parser is not installed in this deployment. "
+                    "PDF ingestion should be run locally or in an environment with full ingestion dependencies."
+                ),
+            )
         parser = Parser()
         documents = parser.parse_directory(pdf_dir, max_docs=request.max_docs)
         if not documents:
@@ -294,6 +303,8 @@ def ingest_documents(request: IngestRequest):
             documents_indexed=len(documents),
             total_vectors=total_vectors,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ingestion error: {str(e)}")
 
@@ -323,6 +334,16 @@ def extract_document_text(file_name: str, pdf_dir: str = "data/20_pdf"):
     if not pdf_path.exists():
         raise HTTPException(status_code=404, detail=f"Document '{safe_name}' not found.")
     try:
+        try:
+            from src.Ingestion.docling_parser import Parser
+        except ImportError:
+            raise HTTPException(
+                status_code=501,
+                detail=(
+                    "Docling parser is not installed in this deployment. "
+                    "Document extraction requires full ingestion dependencies."
+                ),
+            )
         parser = Parser()
         doc = parser.parse_file(pdf_path)
         return ExtractTextResponse(
@@ -330,6 +351,8 @@ def extract_document_text(file_name: str, pdf_dir: str = "data/20_pdf"):
             text=doc.text,
             num_pages=doc.metadata.get("num_pages", 0),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to extract document: {str(e)}")
 

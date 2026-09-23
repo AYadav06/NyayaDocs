@@ -18,7 +18,6 @@ from src.config import (
     QDRANT_API_KEY,
 )
 from src.Ingestion.chunker import LlamaIndexChunker
-from src.Ingestion.docling_parser import Parser
 from src.Ingestion.embedding import get_embedding_model
 
 # Cache clients per path/URL to prevent file lock collisions or redundant network sessions
@@ -132,9 +131,10 @@ def build_or_load_index(
 
 
 if __name__ == "__main__":
-    print("Testing Vector DB Indexing with 1 sample PDF...")
+    from src.Ingestion.docling_parser import Parser
+
     parser = Parser()
-    sample_docs = parser.parse_directory("data/20_pdf", max_docs=1)
+    sample_docs = parser.parse_directory("data/20_pdf")
 
     if sample_docs:
         chunker = LlamaIndexChunker(chunk_size=512, chunk_overlap=64)

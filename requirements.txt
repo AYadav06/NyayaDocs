@@ -1,12 +1,9 @@
-torch
-torchvision
 fastapi>=0.115.0
 uvicorn>=0.30.0
 streamlit>=1.38.0
 requests>=2.32.0
 python-dotenv>=1.0.1
 pydantic-settings>=2.4.0
-docling>=2.12.0
 llama-index-core>=0.12.0
 llama-index-embeddings-google-genai>=0.4.0
 llama-index-llms-gemini>=0.4.0
