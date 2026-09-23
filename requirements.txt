@@ -1,3 +1,9 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# CPU-only PyTorch (reduces download from ~3GB CUDA wheels to ~180MB CPU wheels)
+torch
+torchvision
+
 # Web & API Framework
 fastapi>=0.115.0
 uvicorn>=0.30.0
@@ -8,9 +14,9 @@ requests>=2.32.0
 python-dotenv>=1.0.1
 pydantic-settings>=2.4.0
 
-# Document Parsing & AI (Docling & LlamaIndex)
+# Document Parsing & AI (Docling & LlamaIndex Core)
 docling>=2.12.0
-llama-index>=0.12.0
+llama-index-core>=0.12.0
 llama-index-embeddings-google-genai>=0.4.0
 llama-index-llms-gemini>=0.4.0
 llama-index-llms-google-genai>=0.4.0
