@@ -73,7 +73,11 @@ def initialize_rag(max_initial_docs: Optional[int] = 2, force_rebuild: bool = Fa
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events."""
     print("🚀 Starting NyayaDocs API...")
-    initialize_rag(max_initial_docs=2)
+    try:
+        initialize_rag(max_initial_docs=2)
+    except Exception as e:
+        print(f"⚠️ Notice during startup RAG initialization: {e}")
+        print("💡 The API is running. You can trigger ingestion via /ingest endpoint.")
     yield
     print("🛑 Shutting down NyayaDocs API...")
 
@@ -146,6 +150,22 @@ class HealthResponse(BaseModel):
     vector_count: int
     llm_model: str
     embedding_model: str
+
+
+class DocumentItem(BaseModel):
+    file_name: str
+    file_size_kb: float
+
+
+class DocumentListResponse(BaseModel):
+    total: int
+    documents: List[DocumentItem]
+
+
+class ExtractTextResponse(BaseModel):
+    file_name: str
+    text: str
+    num_pages: int
 
 
 # --- Endpoints ---
@@ -291,5 +311,43 @@ def ingest_documents(request: IngestRequest):
         raise HTTPException(status_code=500, detail=f"Ingestion error: {str(e)}")
 
 
+@app.get("/documents", response_model=DocumentListResponse, tags=["Documents"])
+def list_documents(pdf_dir: str = "data/20_pdf"):
+    """Returns the list of available PDF documents on the server."""
+    path = Path(pdf_dir)
+    if not path.exists():
+        return DocumentListResponse(total=0, documents=[])
+    pdf_files = sorted(list(path.glob("*.pdf")))
+    items = [
+        DocumentItem(
+            file_name=f.name,
+            file_size_kb=round(f.stat().st_size / 1024, 1),
+        )
+        for f in pdf_files
+    ]
+    return DocumentListResponse(total=len(items), documents=items)
+
+
+@app.get("/documents/{file_name}/extract", response_model=ExtractTextResponse, tags=["Documents"])
+def extract_document_text(file_name: str, pdf_dir: str = "data/20_pdf"):
+    """Extracts markdown text from a specific PDF document using Docling on the server."""
+    safe_name = Path(file_name).name
+    pdf_path = Path(pdf_dir) / safe_name
+    if not pdf_path.exists():
+        raise HTTPException(status_code=404, detail=f"Document '{safe_name}' not found.")
+    try:
+        parser = Parser()
+        doc = parser.parse_file(pdf_path)
+        return ExtractTextResponse(
+            file_name=safe_name,
+            text=doc.text,
+            num_pages=doc.metadata.get("num_pages", 0),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to extract document: {str(e)}")
+
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    print(f"🚀 Starting Uvicorn on port {port}...")
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)

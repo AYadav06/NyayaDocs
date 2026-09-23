@@ -11,3 +11,7 @@ LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.5-flash")
 
 QDRANT_STORAGE_PATH = str(ROOT_DIR / "qdrant_storage")
 COLLECTION_NAME = "pagetrail"
+
+# Qdrant Cloud settings (optional - falls back to local storage if not provided)
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")

@@ -225,13 +225,32 @@ st.markdown(
 )
 
 # --- Backend Helper Functions ---
-DEFAULT_API_URL = "http://localhost:8000"
+def get_default_backend_url() -> str:
+    """Detects backend URL from Streamlit secrets, environment variables, or local default."""
+    try:
+        if hasattr(st, "secrets"):
+            if "BACKEND_URL" in st.secrets:
+                return str(st.secrets["BACKEND_URL"]).strip().rstrip("/")
+            if "FASTAPI_URL" in st.secrets:
+                return str(st.secrets["FASTAPI_URL"]).strip().rstrip("/")
+    except Exception:
+        pass
+
+    env_url = os.getenv("BACKEND_URL") or os.getenv("FASTAPI_URL")
+    if env_url:
+        return str(env_url).strip().rstrip("/")
+
+    return "http://localhost:8000"
 
 
-def check_backend_health(api_url: str) -> Optional[Dict[str, Any]]:
+DEFAULT_API_URL = get_default_backend_url()
+
+
+def check_backend_health(api_url: str, timeout: int = 5) -> Optional[Dict[str, Any]]:
     """Checks connection to the FastAPI backend."""
     try:
-        resp = requests.get(f"{api_url}/health", timeout=2)
+        clean_url = api_url.strip().rstrip("/")
+        resp = requests.get(f"{clean_url}/health", timeout=timeout)
         if resp.status_code == 200:
             return resp.json()
     except Exception:
@@ -241,10 +260,11 @@ def check_backend_health(api_url: str) -> Optional[Dict[str, Any]]:
 
 def query_fastapi(api_url: str, query: str, top_k: int, temperature: float) -> Dict[str, Any]:
     """Sends a query to the FastAPI /query endpoint."""
+    clean_url = api_url.strip().rstrip("/")
     resp = requests.post(
-        f"{api_url}/query",
+        f"{clean_url}/query",
         json={"query": query, "similarity_top_k": top_k, "temperature": temperature},
-        timeout=60,
+        timeout=120,
     )
     if resp.status_code == 200:
         return resp.json()
@@ -254,8 +274,9 @@ def query_fastapi(api_url: str, query: str, top_k: int, temperature: float) -> D
 
 def trigger_fastapi_ingest(api_url: str, max_docs: Optional[int], force_rebuild: bool) -> Dict[str, Any]:
     """Triggers document ingestion via FastAPI /ingest endpoint."""
+    clean_url = api_url.strip().rstrip("/")
     resp = requests.post(
-        f"{api_url}/ingest",
+        f"{clean_url}/ingest",
         json={"max_docs": max_docs, "force_rebuild": force_rebuild},
         timeout=300,
     )
@@ -263,6 +284,16 @@ def trigger_fastapi_ingest(api_url: str, max_docs: Optional[int], force_rebuild:
         return resp.json()
     else:
         raise RuntimeError(f"Ingestion Error ({resp.status_code}): {resp.text}")
+
+
+def extract_text_via_backend(api_url: str, file_name: str) -> Optional[str]:
+    """Extracts text from a document via FastAPI /documents/{file_name}/extract."""
+    clean_url = api_url.strip().rstrip("/")
+    resp = requests.get(f"{clean_url}/documents/{file_name}/extract", timeout=120)
+    if resp.status_code == 200:
+        return resp.json().get("text")
+    else:
+        raise RuntimeError(f"Extraction Error ({resp.status_code}): {resp.text}")
 
 
 # --- Direct In-Process Fallback Engine (when FastAPI is not running) ---
@@ -386,15 +417,24 @@ if "messages" not in st.session_state:
 
 # --- Sidebar UI ---
 with st.sidebar:
-    st.markdown("### System Configuration")
+    st.markdown("### ⚙️ System Configuration")
 
-    api_url = st.text_input("FastAPI Backend URL", value=DEFAULT_API_URL)
+    if "backend_url" not in st.session_state:
+        st.session_state.backend_url = DEFAULT_API_URL
+
+    api_url = st.text_input(
+        "FastAPI Backend URL",
+        value=st.session_state.backend_url,
+        help="On Streamlit Cloud, set this to your Render service URL (e.g. https://your-app.onrender.com).",
+    )
+    st.session_state.backend_url = api_url.strip().rstrip("/")
+    current_api_url = st.session_state.backend_url
 
     # Test backend connection
-    backend_status = check_backend_health(api_url)
+    backend_status = check_backend_health(current_api_url, timeout=5)
 
     if backend_status:
-        st.success("FastAPI Server Connected")
+        st.success("🟢 FastAPI Server Connected")
         col1, col2 = st.columns(2)
         with col1:
             st.markdown(
@@ -418,9 +458,22 @@ with st.sidebar:
             )
         use_fastapi = True
     else:
-        st.warning("FastAPI Offline — Using In-Process Direct Engine", icon="⚡")
-        st.caption("To start FastAPI: `uv run uvicorn main:app --reload`")
+        st.warning("🔴 Backend Unreachable", icon="⚠️")
         use_fastapi = False
+
+        if st.button("🔄 Ping / Wake Up Backend", use_container_width=True):
+            with st.spinner("Pinging Render backend (free tier takes ~40-60s to wake up)..."):
+                wake_status = check_backend_health(current_api_url, timeout=60)
+                if wake_status:
+                    st.success("🚀 Backend has awakened and connected!")
+                    st.rerun()
+                else:
+                    st.error("Could not reach backend. Verify your URL and Render deployment status.")
+
+        st.caption(
+            "💡 **Render Free Tier Note**: Web services sleep after 15 mins of inactivity. "
+            "Click **Ping / Wake Up Backend** to wake it up."
+        )
 
     st.markdown("---")
     st.markdown("###  Retrieval Settings")
@@ -588,14 +641,19 @@ with tab2:
             if st.button(f"📖 Extract and View Text ({selected_file_name})", key=f"btn_read_{selected_file_name}"):
                 with st.spinner(f"Extracting text from {selected_file_name}..."):
                     try:
-                        from src.Ingestion.docling_parser import Parser
+                        if use_fastapi:
+                            extracted_text = extract_text_via_backend(st.session_state.backend_url, selected_file_name)
+                        else:
+                            from src.Ingestion.docling_parser import Parser
 
-                        parser = Parser()
-                        parsed_doc = parser.parse_file(selected_path)
+                            parser = Parser()
+                            parsed_doc = parser.parse_file(selected_path)
+                            extracted_text = parsed_doc.text
+
                         st.markdown(
                             f"""
                             <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; padding: 18px; margin-top: 12px; max-height: 600px; overflow-y: auto; color: #F1F5F9; font-size: 0.95rem; line-height: 1.7; white-space: pre-wrap;">
-{html.escape(parsed_doc.text)}
+{html.escape(extracted_text or "")}
                             </div>
                             """,
                             unsafe_allow_html=True,

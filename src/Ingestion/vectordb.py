@@ -11,12 +11,17 @@ from llama_index.core import (
 from llama_index.core.schema import BaseNode
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 
-from src.config import COLLECTION_NAME, QDRANT_STORAGE_PATH
+from src.config import (
+    COLLECTION_NAME,
+    QDRANT_STORAGE_PATH,
+    QDRANT_URL,
+    QDRANT_API_KEY,
+)
 from src.Ingestion.chunker import LlamaIndexChunker
 from src.Ingestion.docling_parser import Parser
 from src.Ingestion.embedding import get_embedding_model
 
-# Cache clients per path to prevent file lock collisions in local Qdrant
+# Cache clients per path/URL to prevent file lock collisions or redundant network sessions
 _CLIENT_CACHE: Dict[str, qdrant_client.QdrantClient] = {}
 
 
@@ -36,11 +41,29 @@ atexit.register(_cleanup_qdrant_clients)
 def get_qdrant_client(
     storage_path: Optional[str] = None,
     in_memory: bool = False,
+    url: Optional[str] = None,
+    api_key: Optional[str] = None,
 ) -> qdrant_client.QdrantClient:
-    """Initializes and returns a Qdrant client, reusing instances for local storage."""
+    """Initializes and returns a Qdrant client, reusing instances for local or cloud storage."""
+    target_url = url or QDRANT_URL
+    target_api_key = api_key or QDRANT_API_KEY
+
+    # 1. Connect to Qdrant Cloud if URL is provided
+    if target_url:
+        cache_key = f"cloud_{target_url}"
+        if cache_key not in _CLIENT_CACHE:
+            print(f" Connecting to Qdrant Cloud at {target_url}...")
+            _CLIENT_CACHE[cache_key] = qdrant_client.QdrantClient(
+                url=target_url,
+                api_key=target_api_key,
+            )
+        return _CLIENT_CACHE[cache_key]
+
+    # 2. In-memory mode for temporary tests
     if in_memory:
         return qdrant_client.QdrantClient(":memory:")
 
+    # 3. Local disk storage fallback
     resolved_path = str(Path(storage_path or QDRANT_STORAGE_PATH).resolve())
     Path(resolved_path).mkdir(parents=True, exist_ok=True)
 
