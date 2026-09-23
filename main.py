@@ -39,18 +39,18 @@ def initialize_rag(force_rebuild: bool = False):
             count = client.count(collection_name=COLLECTION_NAME).count
             has_vectors = count > 0 and not force_rebuild
             if has_vectors:
-                print(f"📦 Found existing collection '{COLLECTION_NAME}' with {count} vectors.")
+                print(f"Found existing collection '{COLLECTION_NAME}' with {count} vectors.")
     except Exception as e:
         print(f"Notice during collection check: {e}")
         has_vectors = False
 
     if has_vectors:
-        print("⚡ Loading VectorStoreIndex from existing Qdrant storage...")
+        print("Loading VectorStoreIndex from existing Qdrant storage...")
         index = build_or_load_index(client=client, force_rebuild=force_rebuild)
         rag_state["index"] = index
         return index
     else:
-        print("ℹ️ No existing vector index found. Ready for ingestion via /ingest endpoint.")
+        print("No existing vector index found. Ready for ingestion via /ingest endpoint.")
         rag_state["index"] = None
         return None
 
@@ -58,14 +58,14 @@ def initialize_rag(force_rebuild: bool = False):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events."""
-    print("🚀 Starting NyayaDocs API...")
+    print("Starting NyayaDocs API...")
     try:
         initialize_rag()
     except Exception as e:
-        print(f"⚠️ Notice during startup RAG initialization: {e}")
-        print("💡 The API is running. You can trigger ingestion via /ingest endpoint.")
+        print(f"Notice during startup RAG initialization: {e}")
+        print("The API is running. You can trigger ingestion via /ingest endpoint.")
     yield
-    print("🛑 Shutting down NyayaDocs API...")
+    print("Shutting down NyayaDocs API...")
 
 
 # --- FastAPI App Definition ---
@@ -359,5 +359,5 @@ def extract_document_text(file_name: str, pdf_dir: str = "data/20_pdf"):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    print(f"🚀 Starting Uvicorn on port {port}...")
+    print(f"Starting Uvicorn on port {port}...")
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)

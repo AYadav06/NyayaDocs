@@ -1,5 +1,5 @@
 [project]
-name = "pagetrail"
+name = "NyayaDocs"
 version = "0.1.0"
 description = "NyayaDocs Legal RAG Backend and Frontend"
 readme = "README.md"

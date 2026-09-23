@@ -4,8 +4,11 @@ import os
 from pathlib import Path
 import time
 from typing import Any, Dict, List, Optional
+from dotenv import load_dotenv
 import requests
 import streamlit as st
+
+load_dotenv()
 
 st.set_page_config(
     page_title="NyayaDocs",
@@ -382,8 +385,8 @@ def render_citation_card(idx: int, s: Dict[str, Any]) -> str:
                     {page_badge}
                 </div>
                 <div>
-                    <span class="expand-hint">🔍 Click to view full content ▾</span>
-                    <span class="collapse-hint">🔼 Click to collapse</span>
+                    <span class="expand-hint">Click to view full content ▾</span>
+                    <span class="collapse-hint">Click to collapse ▴</span>
                 </div>
             </div>
             <p style="color: #CBD5E1; font-size: 0.92rem; margin-top: 10px; margin-bottom: 2px; line-height: 1.5;">
@@ -393,7 +396,7 @@ def render_citation_card(idx: int, s: Dict[str, Any]) -> str:
         <div class="citation-full-container">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="color: #38BDF8; font-weight: 600; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
-                    📖 Complete Retrieved Content Chunk
+                    Complete Retrieved Content Chunk
                 </span>
                 <span style="color: #94A3B8; font-size: 0.78rem;">
                     {char_count}
@@ -417,7 +420,7 @@ if "messages" not in st.session_state:
 
 # --- Sidebar UI ---
 with st.sidebar:
-    st.markdown("### ⚙️ System Configuration")
+    st.markdown("### System Configuration")
 
     if "backend_url" not in st.session_state:
         st.session_state.backend_url = DEFAULT_API_URL
@@ -434,7 +437,7 @@ with st.sidebar:
     backend_status = check_backend_health(current_api_url, timeout=5)
 
     if backend_status:
-        st.success("🟢 FastAPI Server Connected")
+        st.success("FastAPI Server Connected")
         col1, col2 = st.columns(2)
         with col1:
             st.markdown(
@@ -450,7 +453,7 @@ with st.sidebar:
             st.markdown(
                 f"""
                 <div class="stat-box">
-                    <div class="stat-number">{backend_status.get('collection_name', 'pagetrail')}</div>
+                    <div class="stat-number">{backend_status.get('collection_name', 'Nyaya')}</div>
                     <div class="stat-label">Collection</div>
                 </div>
                 """,
@@ -458,20 +461,20 @@ with st.sidebar:
             )
         use_fastapi = True
     else:
-        st.warning("🔴 Backend Unreachable", icon="⚠️")
+        st.warning("Backend Unreachable")
         use_fastapi = False
 
-        if st.button("🔄 Ping / Wake Up Backend", use_container_width=True):
+        if st.button("Ping / Wake Up Backend", use_container_width=True):
             with st.spinner("Pinging Render backend (free tier takes ~40-60s to wake up)..."):
                 wake_status = check_backend_health(current_api_url, timeout=60)
                 if wake_status:
-                    st.success("🚀 Backend has awakened and connected!")
+                    st.success("Backend has awakened and connected!")
                     st.rerun()
                 else:
                     st.error("Could not reach backend. Verify your URL and Render deployment status.")
 
         st.caption(
-            "💡 **Render Free Tier Note**: Web services sleep after 15 mins of inactivity. "
+            "**Render Free Tier Note**: Web services sleep after 15 mins of inactivity. "
             "Click **Ping / Wake Up Backend** to wake it up."
         )
 
@@ -557,7 +560,7 @@ with tab1:
             # Render Expandable Citations for Assistant Responses
             sources = msg.get("sources", [])
             if sources:
-                with st.expander(f"📚 Retrieved Sources & Citations ({len(sources)} citations)"):
+                with st.expander(f"Retrieved Sources & Citations ({len(sources)} citations)"):
                     for idx, s in enumerate(sources, 1):
                         st.markdown(render_citation_card(idx, s), unsafe_allow_html=True)
 
@@ -587,7 +590,7 @@ with tab1:
 
                     # Display citations
                     if sources:
-                        with st.expander(f"📚 Retrieved Sources & Citations ({len(sources)} citations)", expanded=True):
+                        with st.expander(f"Retrieved Sources & Citations ({len(sources)} citations)", expanded=True):
                             for idx, s in enumerate(sources, 1):
                                 st.markdown(render_citation_card(idx, s), unsafe_allow_html=True)
 
@@ -595,11 +598,11 @@ with tab1:
                     st.session_state.messages.append({"role": "assistant", "content": answer, "sources": sources})
 
                 except Exception as e:
-                    st.error(f"❌ Error generating answer: {str(e)}")
+                    st.error(f"Error generating answer: {str(e)}")
 
 
 with tab2:
-    st.markdown("### 📂 Supreme Court of India PDF Corpus")
+    st.markdown("### Supreme Court of India PDF Corpus")
     pdf_dir = Path("data/20_pdf")
 
     if pdf_dir.exists():
@@ -614,7 +617,7 @@ with tab2:
         st.dataframe(doc_data, use_container_width=True)
 
         st.markdown("---")
-        st.markdown("### 🔍 Document Inspector & Reader")
+        st.markdown("### Document Inspector & Reader")
         selected_file_name = st.selectbox(
             "Select a judgment PDF to read or download:",
             options=[f.name for f in pdf_files],
@@ -631,14 +634,14 @@ with tab2:
             with col_info2:
                 with open(selected_path, "rb") as f_pdf:
                     st.download_button(
-                        label="📥 Download Original PDF",
+                        label="Download Original PDF",
                         data=f_pdf.read(),
                         file_name=selected_file_name,
                         mime="application/pdf",
                         use_container_width=True,
                     )
 
-            if st.button(f"📖 Extract and View Text ({selected_file_name})", key=f"btn_read_{selected_file_name}"):
+            if st.button(f"Extract and View Text ({selected_file_name})", key=f"btn_read_{selected_file_name}"):
                 with st.spinner(f"Extracting text from {selected_file_name}..."):
                     try:
                         if use_fastapi:
