@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "docling>=2.129.0",
+    "fastapi>=0.141.1",
     "llama-index>=0.14.25",
     "llama-index-embeddings-google-genai>=0.6.0",
     "llama-index-llms-gemini>=0.6.2",
@@ -14,4 +15,6 @@ dependencies = [
     "pydantic-settings>=2.15.0",
     "python-dotenv>=1.2.3",
     "requests>=2.34.2",
+    "streamlit>=1.64.0",
+    "uvicorn>=0.53.0",
 ]
